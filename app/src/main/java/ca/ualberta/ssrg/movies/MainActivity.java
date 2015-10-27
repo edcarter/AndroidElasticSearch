@@ -9,7 +9,9 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 import ca.ualberta.ssrg.androidelasticsearch.R;
 import ca.ualberta.ssrg.movies.es.ESMovieManager;
@@ -20,10 +22,11 @@ import ca.ualberta.ssrg.movies.es.MoviesController;
 public class MainActivity extends Activity {
 
 	private ListView movieList;
-	private Movies movies;
+	private Movies movies = new Movies();
 	private ArrayAdapter<Movie> moviesViewAdapter;
 	private ESMovieManager movieManager;
 	private MoviesController moviesController;
+	private SearchThread searchThread;
 
 	private Context mContext = this;
 
@@ -42,13 +45,14 @@ public class MainActivity extends Activity {
 		movies = new Movies();
 		moviesViewAdapter = new ArrayAdapter<Movie>(this, R.layout.list_item,movies);
 		movieList.setAdapter(moviesViewAdapter);
-		movieManager = new ESMovieManager("");
+		//movieManager = new ESMovieManager("");
+		searchThread = new SearchThread("");
 
 		// Show details when click on a movie
 		movieList.setOnItemClickListener(new OnItemClickListener() {
 
 			@Override
-			public void onItemClick(AdapterView<?> parent, View view, int pos,	long id) {
+			public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
 				int movieId = movies.get(pos).getId();
 				startDetailsActivity(movieId);
 			}
@@ -69,6 +73,16 @@ public class MainActivity extends Activity {
 				return true;
 			}
 		});
+
+		Button searchButton = (Button) findViewById(R.id.button1);
+		searchButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				TextView searchTerms = (TextView) findViewById(R.id.editText1);
+				SearchThread search = new SearchThread(searchTerms.getText().toString());
+				search.start();
+			}
+		});
 	}
 
 	@Override
@@ -76,7 +90,8 @@ public class MainActivity extends Activity {
 		super.onResume();
 		
 		
-
+		SearchThread thread = new SearchThread("");
+		thread.start();
 		// Refresh the list when visible
 		// TODO: Search all
 		
@@ -132,7 +147,19 @@ public class MainActivity extends Activity {
 
 	class SearchThread extends Thread {
 		// TODO: Implement search thread
-		
+		private String search;
+
+		public SearchThread(String search){
+			this.search = search;
+		}
+
+		@Override
+		public void run() {
+			movieManager = new ESMovieManager(search);
+			movies.clear();
+			movies.addAll(movieManager.searchMovies(search, null));
+			notifyUpdated();
+		}
 	}
 
 	
